@@ -1,0 +1,28 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: booking
+
+  # Cấu hình kết nối cơ sở dữ liệu Supabase PostgreSQL
+  datasource:
+    url: jdbc:postgresql://db.kxsassyoimnekfduihub.supabase.co:5432/postgres?sslmode=require
+    username: postgres
+    password: sy4B3CAFjoxnDtL4
+    driver-class-name: org.postgresql.Driver
+
+  # Cấu hình Hibernate JPA
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update # Tự động tạo/cập nhật bảng khi chạy thử dự án
+    show-sql: true # In câu lệnh SQL ra console để debug
+    properties:
+      hibernate:
+        format_sql: true
+
+# Cấu hình khóa JWT từ Supabase phục vụ giải mã Token bảo mật
+supabase:
+  jwt:
+    secret: ${SUPABASE_JWT_SECRET:your_fallback_supabase_jwt_secret_which_should_be_at_least_32_characters_long_for_security}
