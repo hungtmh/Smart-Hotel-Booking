@@ -2,11 +2,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Thanh dieu huong (Navbar) hien thi o dau moi trang.
- * Tu dong thay doi noi dung dua tren trang thai dang nhap va vai tro (Admin/User).
+ * Thanh điều hướng (Navbar) hiển thị ở đầu trang Khách hàng.
  */
 export default function Navbar() {
-  const { user, profile, signOut, isAdmin } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
   return (
     <nav className="navbar">
@@ -21,14 +20,14 @@ export default function Navbar() {
 
           {user ? (
             <>
+              <Link to="/search" className="nav-link">Tìm phòng</Link>
               <Link to="/dashboard" className="nav-link">
-                {isAdmin ? 'Bảng điều khiển' : 'Tài khoản'}
+                Tài khoản
               </Link>
               <div className="nav-user-info">
                 <span className="nav-user-name">
                   {profile?.fullName || user.email}
                 </span>
-                {isAdmin && <span className="nav-badge-admin">ADMIN</span>}
               </div>
               <button onClick={signOut} className="nav-btn-logout">
                 Đăng xuất

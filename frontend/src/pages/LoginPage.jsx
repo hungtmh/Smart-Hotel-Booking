@@ -3,15 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Trang dang nhap ho tro ca Admin va User.
- * Su dung Supabase Auth (email/password + Google OAuth).
+ * Trang đăng nhập dành cho Khách hàng.
  */
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signOut, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -20,6 +19,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // 1. Kiểm tra vai trò của email trước khi đăng nhập (tránh đăng nhập nhầm role)
+      try {
+        const roleRes = await fetch(`http://localhost:8080/api/public/auth/role?email=${encodeURIComponent(email)}`);
+        if (roleRes.ok) {
+          const { role } = await roleRes.json();
+          if (role === 'ADMIN') {
+            setError('Tài khoản Quản trị viên không thể đăng nhập vào giao diện của Khách hàng.');
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Không thể kiểm tra vai trò trước đăng nhập:', err);
+      }
+
+      // 2. Chỉ thực hiện đăng nhập khi vai trò hợp lệ
       await signIn(email, password);
       navigate('/dashboard');
     } catch (err) {
@@ -32,6 +47,7 @@ export default function LoginPage() {
   async function handleGoogleLogin() {
     try {
       await signInWithGoogle();
+      navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Không thể đăng nhập bằng Google.');
     }
@@ -43,16 +59,16 @@ export default function LoginPage() {
         <div className="auth-header">
           <span className="auth-logo">M</span>
           <h1>Đăng nhập</h1>
-          <p>Chào mừng bạn quay trở lại</p>
+          <p>Chào mừng bạn quay trở lại đặt phòng</p>
         </div>
 
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="login-email">Email</label>
             <input
-              id="email"
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -61,9 +77,9 @@ export default function LoginPage() {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="password">Mật khẩu</label>
+            <label htmlFor="login-password">Mật khẩu</label>
             <input
-              id="password"
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -71,7 +87,12 @@ export default function LoginPage() {
               required
             />
           </div>
-          <button type="submit" className="btn-primary btn-full" disabled={loading}>
+          <button
+            id="login-submit-btn"
+            type="submit"
+            className="btn-primary btn-full"
+            disabled={loading}
+          >
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
@@ -79,7 +100,6 @@ export default function LoginPage() {
         <div className="auth-divider">
           <span>hoặc</span>
         </div>
-
         <button onClick={handleGoogleLogin} className="btn-google">
           <svg width="18" height="18" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>

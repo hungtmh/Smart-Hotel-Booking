@@ -25,4 +25,4 @@ spring:
 # Cấu hình khóa JWT từ Supabase phục vụ giải mã Token bảo mật
 supabase:
   jwt:
-    secret: ${SUPABASE_JWT_SECRET:your_fallback_supabase_jwt_secret_which_should_be_at_least_32_characters_long_for_security}
+    secret: ${SUPABASE_JWT_SECRET:mcDvrnb1GX2lC2GGmq/b6U7dWHwwjIM94/irydzgZdDP9mPQVN7FOgbfBSdEJWKQ1gl/ds0dVpDv1UzvDg/uTQ==}

@@ -107,6 +107,9 @@ export function AuthProvider({ children }) {
     setProfile(null);
   }
 
+  // isAdmin = true neu profile.role la ADMIN
+  const isAdmin = profile?.role === 'ADMIN';
+
   const value = {
     user,
     profile,
@@ -115,7 +118,7 @@ export function AuthProvider({ children }) {
     signUp,
     signInWithGoogle,
     signOut,
-    isAdmin: profile?.role === 'ADMIN',
+    isAdmin,
     isAuthenticated: !!user,
   };
 

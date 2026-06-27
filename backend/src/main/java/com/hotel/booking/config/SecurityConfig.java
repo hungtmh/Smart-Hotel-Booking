@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.Customizer;
 
 /**
  * Cau hinh bao mat Spring Security.
@@ -28,6 +29,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // Enable CORS to integrate with WebMvcConfigurer
+            .cors(Customizer.withDefaults())
             // Tat CSRF vi dung REST API stateless
             .csrf(AbstractHttpConfigurer::disable)
             // Khong tao HTTP Session
@@ -41,6 +44,8 @@ public class SecurityConfig {
                     "/api/ai/search",
                     "/api/ai/chat"
                 ).permitAll()
+                // API admin: chi cho ROLE_ADMIN
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Tat ca request con lai phai co JWT hop le
                 .anyRequest().authenticated()
             )

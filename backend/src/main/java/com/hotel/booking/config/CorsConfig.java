@@ -18,8 +18,15 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**") // Áp dụng cho toàn bộ đường dẫn API
-                        .allowedOrigins("http://localhost:5173") // Chỉ cho phép React Frontend dev server
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Các HTTP Method được phép
+                        .allowedOrigins(
+                                "http://localhost:5173",
+                                "http://127.0.0.1:5173",
+                                "http://localhost:3001",
+                                "http://127.0.0.1:3001",
+                                "http://localhost:3000",
+                                "http://127.0.0.1:3000"
+                        ) // Cho phep ca React Customer Frontend va Admin Portal dev servers
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS") // Các HTTP Method được phép
                         .allowedHeaders("*") // Chấp nhận tất cả header
                         .allowCredentials(true); // Cho phép đính kèm credentials (cookies, auth headers)
             }
