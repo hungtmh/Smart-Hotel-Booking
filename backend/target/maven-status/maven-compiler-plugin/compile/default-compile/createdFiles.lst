@@ -32,6 +32,7 @@ com\hotel\booking\dto\BookingResponse.class
 com\hotel\booking\dto\ProfileResponse.class
 com\hotel\booking\service\AdminRoomTypeService.class
 com\hotel\booking\service\AdminBookingService.class
+com\hotel\booking\controller\PublicAuthController.class
 com\hotel\booking\dto\BookingResponse$BookingResponseBuilder.class
 com\hotel\booking\repository\RoomTypeRepository.class
 com\hotel\booking\service\AdminHotelService.class
