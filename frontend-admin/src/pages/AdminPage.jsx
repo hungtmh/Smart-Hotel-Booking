@@ -325,8 +325,8 @@ export default function AdminPage() {
                           <div className="admin-cell-primary">{b.hotelName}</div>
                           <div className="admin-cell-secondary">{b.roomTypeName}</div>
                         </td>
-                        <td>{b.checkInDate}</td>
-                        <td>{b.checkOutDate}</td>
+                        <td>{new Date(b.checkInDate).toLocaleString('vi-VN')}</td>
+                        <td>{new Date(b.checkOutDate).toLocaleString('vi-VN')}</td>
                         <td className="admin-amount">{b.totalAmount?.toLocaleString('vi-VN')} ₫</td>
                         <td>{statusBadge(b.status)}</td>
                         <td>

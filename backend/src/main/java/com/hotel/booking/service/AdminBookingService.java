@@ -9,7 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -65,8 +66,8 @@ public class AdminBookingService {
      */
     @Transactional
     public void autoCompleteExpiredBookings() {
-        LocalDate today = LocalDate.now();
-        List<Booking> expired = bookingRepository.findExpiredBookings(today);
+        LocalDateTime now = LocalDateTime.now();
+        List<Booking> expired = bookingRepository.findExpiredBookings(now);
         if (expired.isEmpty()) {
             log.info("Scheduler: Khong co booking nao can chuyen trang thai.");
             return;
@@ -74,11 +75,11 @@ public class AdminBookingService {
         expired.forEach(b -> b.setStatus("COMPLETED"));
         bookingRepository.saveAll(expired);
         log.info("Scheduler: Da tu dong chuyen {} booking sang COMPLETED (checkOutDate <= {}).",
-                expired.size(), today);
+                expired.size(), now);
     }
 
     private BookingResponse toResponse(Booking booking) {
-        long nights = ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate());
+        long nights = calculateBillableNights(booking);
         return BookingResponse.builder()
                 .bookingId(booking.getId())
                 .status(booking.getStatus())
@@ -95,5 +96,15 @@ public class AdminBookingService {
                 .specialRequests(booking.getSpecialRequests())
                 .createdAt(booking.getCreatedAt())
                 .build();
+    }
+
+    private long calculateBillableNights(Booking booking) {
+        long nights = ChronoUnit.DAYS.between(
+                booking.getCheckInDate().toLocalDate(),
+                booking.getCheckOutDate().toLocalDate());
+        if (booking.getCheckOutDate().toLocalTime().isAfter(LocalTime.NOON)) {
+            nights++;
+        }
+        return Math.max(1, nights);
     }
 }

@@ -1,10 +1,9 @@
 package com.hotel.booking.dto;
 
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -17,11 +16,10 @@ public class BookingRequest {
     private UUID roomTypeId;
 
     @NotNull(message = "checkInDate la bat buoc")
-    @Future(message = "Ngay check-in phai la ngay trong tuong lai")
-    private LocalDate checkInDate;
+    private LocalDateTime checkInDate;
 
     @NotNull(message = "checkOutDate la bat buoc")
-    private LocalDate checkOutDate;
+    private LocalDateTime checkOutDate;
 
     @Min(value = 1, message = "Phai co it nhat 1 nguoi lon")
     private Integer numAdults = 1;

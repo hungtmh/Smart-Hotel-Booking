@@ -3,7 +3,7 @@ package com.hotel.booking.dto;
 import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -24,8 +24,8 @@ public class BookingResponse {
     private String hotelCity;
 
     // Thong tin dat phong
-    private LocalDate checkInDate;
-    private LocalDate checkOutDate;
+    private LocalDateTime checkInDate;
+    private LocalDateTime checkOutDate;
     private Integer numNights;
     private Integer numAdults;
     private Integer numChildren;

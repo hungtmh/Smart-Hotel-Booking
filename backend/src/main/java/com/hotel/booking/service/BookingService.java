@@ -13,10 +13,13 @@ import com.hotel.booking.repository.RoomRepository;
 import com.hotel.booking.repository.RoomTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -43,9 +46,12 @@ public class BookingService {
      */
     @Transactional
     public BookingResponse createBooking(BookingRequest request, String userId) {
-        // 1. Kiem tra ngay check-out phai sau check-in
-        if (!request.getCheckOutDate().isAfter(request.getCheckInDate())) {
-            throw new IllegalArgumentException("Ngay check-out phai sau ngay check-in.");
+        // 1. Kiem tra thoi diem check-in/check-out hop le
+        if (!request.getCheckInDate().isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Thoi diem check-in phai o trong tuong lai.");
+        }
+        if (!request.getCheckOutDate().toLocalDate().isAfter(request.getCheckInDate().toLocalDate())) {
+            throw new IllegalArgumentException("Ngay check-out phai sau ngay check-in (khong duoc trung ngay).");
         }
 
         // 2. Tim RoomType
@@ -70,7 +76,7 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay profile nguoi dung."));
 
         // 5. Tinh so dem va tong tien
-        long numNights = ChronoUnit.DAYS.between(request.getCheckInDate(), request.getCheckOutDate());
+        long numNights = calculateBillableNights(request.getCheckInDate(), request.getCheckOutDate());
         BigDecimal totalAmount = BigDecimal.valueOf(roomType.getBasePrice()).multiply(BigDecimal.valueOf(numNights));
 
         // 6. Tao va luu Booking
@@ -85,7 +91,15 @@ public class BookingService {
         booking.setSpecialRequests(request.getSpecialRequests());
         booking.setStatus("PENDING");
 
-        Booking saved = bookingRepository.save(booking);
+        Booking saved;
+        try {
+            saved = bookingRepository.saveAndFlush(booking);
+        } catch (DataIntegrityViolationException ex) {
+            if (isRoomOverlapConstraintViolation(ex)) {
+                throw new IllegalStateException("Phong vua duoc dat boi nguoi khac. Vui long thu lai.", ex);
+            }
+            throw ex;
+        }
         log.info("Booking moi duoc tao: {} cho user: {}", saved.getId(), userId);
 
         return toResponse(saved, (int) numNights);
@@ -99,7 +113,7 @@ public class BookingService {
         List<Booking> bookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(UUID.fromString(userId));
         return bookings.stream()
                 .map(b -> {
-                    long nights = ChronoUnit.DAYS.between(b.getCheckInDate(), b.getCheckOutDate());
+                    long nights = calculateBillableNights(b.getCheckInDate(), b.getCheckOutDate());
                     return toResponse(b, (int) nights);
                 })
                 .collect(Collectors.toList());
@@ -125,5 +139,25 @@ public class BookingService {
                 .specialRequests(booking.getSpecialRequests())
                 .createdAt(booking.getCreatedAt())
                 .build();
+    }
+
+    private boolean isRoomOverlapConstraintViolation(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.contains("booking_no_room_overlap")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private long calculateBillableNights(LocalDateTime checkInDate, LocalDateTime checkOutDate) {
+        long nights = ChronoUnit.DAYS.between(checkInDate.toLocalDate(), checkOutDate.toLocalDate());
+        if (checkOutDate.toLocalTime().isAfter(LocalTime.NOON)) {
+            nights++;
+        }
+        return Math.max(1, nights);
     }
 }

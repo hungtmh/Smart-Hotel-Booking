@@ -91,8 +91,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    check_in_date DATE NOT NULL,
-    check_out_date DATE NOT NULL,
+    check_in_date TIMESTAMP NOT NULL,
+    check_out_date TIMESTAMP NOT NULL,
     total_amount DECIMAL(12, 2) NOT NULL,
     num_adults INTEGER NOT NULL DEFAULT 1,
     num_children INTEGER NOT NULL DEFAULT 0,
@@ -105,6 +105,26 @@ CREATE TABLE IF NOT EXISTS bookings (
 
 CREATE INDEX IF NOT EXISTS idx_bookings_user ON bookings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+
+-- Chong double booking o tang PostgreSQL.
+-- tsrange(..., '[)') nghia la check_in duoc tinh, check_out khong tinh,
+-- nen khach tra phong ngay 10 va khach khac nhan phong ngay 10 khong bi xem la trung.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'booking_no_room_overlap'
+    ) THEN
+        ALTER TABLE bookings
+            ADD CONSTRAINT booking_no_room_overlap
+            EXCLUDE USING gist (
+                room_id WITH =,
+                tsrange(check_in_date, check_out_date, '[)') WITH &&
+            )
+            WHERE (status <> 'CANCELLED');
+    END IF;
+END $$;
 
 -- 7. BANG REVIEWS
 CREATE TABLE IF NOT EXISTS reviews (

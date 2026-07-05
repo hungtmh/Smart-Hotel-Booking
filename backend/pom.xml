@@ -15,7 +15,7 @@
     <description>Hệ thống quản lý đặt phòng khách sạn thông minh</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>17</java.version>
         <spring-ai.version>0.8.1</spring-ai.version>
     </properties>
 
@@ -117,6 +117,13 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
                 </configuration>
             </plugin>
         </plugins>

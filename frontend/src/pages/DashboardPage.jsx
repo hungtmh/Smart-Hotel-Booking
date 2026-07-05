@@ -11,6 +11,8 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
 
+  const [lastUpdated, setLastUpdated] = useState(null);
+
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
       signOut();
@@ -19,6 +21,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user || isAdmin) return;
+
     const fetchBookings = async () => {
       setBookingsLoading(true);
       try {
@@ -27,14 +30,25 @@ export default function DashboardPage() {
         const res = await fetch('http://localhost:8080/api/bookings/my', {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
-        if (res.ok) setBookings(await res.json());
+        if (res.ok) {
+          setBookings(await res.json());
+          setLastUpdated(new Date()); // Ghi thời điểm cập nhật
+        }
       } catch (err) {
         console.error('Lỗi khi lấy lịch sử booking:', err);
       } finally {
         setBookingsLoading(false);
       }
     };
+
+    // Gọi ngay lần đầu khi vào trang
     fetchBookings();
+
+    // Tự động gọi lại mỗi 60 giây để cập nhật trạng thái từ cron job Supabase
+    const interval = setInterval(fetchBookings, 60000);
+
+    // Dọn dẹp interval khi rời khỏi trang
+    return () => clearInterval(interval);
   }, [user, isAdmin]);
 
   const statusConfig = {
@@ -124,6 +138,11 @@ export default function DashboardPage() {
         <div className="bookings-section">
           <div className="bookings-section-header">
             <h2>📋 Lịch sử đặt phòng</h2>
+            {lastUpdated && (
+              <span className="last-updated-hint">
+                🔄 Tự động cập nhật · {lastUpdated.toLocaleTimeString('vi-VN')}
+              </span>
+            )}
           </div>
 
           {bookingsLoading ? (
@@ -153,9 +172,9 @@ export default function DashboardPage() {
                         <h3 className="booking-room-name">{booking.roomTypeName}</h3>
                         <p className="booking-hotel-name">📍 {booking.hotelName} — {booking.hotelCity}</p>
                         <p className="booking-dates">
-                          📅 {new Date(booking.checkInDate).toLocaleDateString('vi-VN')}
+                          📅 {new Date(booking.checkInDate).toLocaleString('vi-VN')}
                           &nbsp;→&nbsp;
-                          {new Date(booking.checkOutDate).toLocaleDateString('vi-VN')}
+                          {new Date(booking.checkOutDate).toLocaleString('vi-VN')}
                           &nbsp;({booking.numNights} đêm)
                         </p>
                         <p className="booking-guests">

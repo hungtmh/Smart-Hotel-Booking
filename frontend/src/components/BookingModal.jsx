@@ -9,10 +9,46 @@ import { supabase } from '../supabaseClient';
  *   - onSuccess: callback khi dat phong thanh cong
  */
 export default function BookingModal({ room, onClose, onSuccess }) {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const toDateTimeLocalValue = (date) => {
+    const pad = (value) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+  const parseDateTimeLocalValue = (value) => {
+    if (!value) return null;
+    const [datePart, timePart] = value.split('T');
+    if (!datePart || !timePart) return null;
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+    const parsed = new Date(year, month - 1, day, hour, minute);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const getDatePart = (value) => value ? value.split('T')[0] : '';
+  const getNextDayStartValue = (value) => {
+    const date = parseDateTimeLocalValue(value);
+    if (!date) return toDateTimeLocalValue(defaultCheckOutDate);
+    date.setDate(date.getDate() + 1);
+    date.setHours(0, 0, 0, 0);
+    return toDateTimeLocalValue(date);
+  };
+  const calculateBillableNights = (checkInValue, checkOutValue) => {
+    const checkInDate = parseDateTimeLocalValue(checkInValue);
+    const checkOutDate = parseDateTimeLocalValue(checkOutValue);
+    if (!checkInDate || !checkOutDate || checkOutDate <= checkInDate) return 0;
 
-  const [checkIn, setCheckIn] = useState(tomorrow);
+    const checkInDay = Date.UTC(checkInDate.getFullYear(), checkInDate.getMonth(), checkInDate.getDate());
+    const checkOutDay = Date.UTC(checkOutDate.getFullYear(), checkOutDate.getMonth(), checkOutDate.getDate());
+    const dayDiff = Math.floor((checkOutDay - checkInDay) / 86400000);
+    const lateCheckoutNight = checkOutDate.getHours() > 12
+      || (checkOutDate.getHours() === 12 && checkOutDate.getMinutes() > 0);
+
+    return Math.max(1, dayDiff + (lateCheckoutNight ? 1 : 0));
+  };
+  const now = new Date();
+  const minCheckInDateTime = toDateTimeLocalValue(now);
+  const defaultCheckInDate = new Date(now.getTime() + 60 * 60 * 1000);
+  const defaultCheckOutDate = new Date(defaultCheckInDate.getTime() + 24 * 60 * 60 * 1000);
+
+  const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [numAdults, setNumAdults] = useState(1);
   const [numChildren, setNumChildren] = useState(0);
@@ -20,23 +56,32 @@ export default function BookingModal({ room, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const checkInDate = parseDateTimeLocalValue(checkIn);
+  const checkOutDate = parseDateTimeLocalValue(checkOut);
+  // So sánh chỉ theo NGÀY (bỏ qua giờ)
+  const checkInDateOnly = checkIn ? getDatePart(checkIn) : '';
+  const checkOutDateOnly = checkOut ? getDatePart(checkOut) : '';
+  const validationMessage = !checkIn
+    ? 'Vui lòng chọn thời điểm check-in.'
+    : !checkInDate || checkInDate <= now
+      ? 'Thời điểm check-in phải sau thời điểm hiện tại.'
+      : !checkOut
+        ? 'Vui lòng chọn thời điểm check-out.'
+        : !checkOutDate || checkOutDateOnly <= checkInDateOnly
+          ? 'Ngày check-out phải sau ngày check-in (không được trùng ngày).'
+          : '';
+  const isCheckInInvalid = Boolean(checkIn) && (!checkInDate || checkInDate <= now);
+  const isCheckOutInvalid = Boolean(checkOut) && (!checkOutDate || (checkInDateOnly && checkOutDateOnly <= checkInDateOnly));
+  const shouldShowValidation = Boolean(checkIn || checkOut);
+
   // Tinh so dem va tong tien
-  const numNights = checkIn && checkOut
-    ? Math.max(0, Math.ceil((new Date(checkOut) - new Date(checkIn)) / 86400000))
-    : 0;
+  const numNights = validationMessage ? 0 : calculateBillableNights(checkIn, checkOut);
   const totalAmount = numNights * (room?.basePrice || 0);
 
-  // Min checkOut = checkIn + 1 ngay
+  // Min checkOut = ngay sau ngay check-in luc 00:00.
   const minCheckOut = checkIn
-    ? new Date(new Date(checkIn).getTime() + 86400000).toISOString().split('T')[0]
-    : tomorrow;
-
-  // Reset checkOut khi checkIn thay doi neu checkOut <= checkIn
-  useEffect(() => {
-    if (checkOut && checkOut <= checkIn) {
-      setCheckOut('');
-    }
-  }, [checkIn]);
+    ? getNextDayStartValue(checkIn)
+    : toDateTimeLocalValue(defaultCheckOutDate);
 
   // Dong modal khi nhan ESC
   useEffect(() => {
@@ -49,12 +94,8 @@ export default function BookingModal({ room, onClose, onSuccess }) {
     e.preventDefault();
     setError(null);
 
-    if (!checkOut) {
-      setError('Vui lòng chọn ngày check-out.');
-      return;
-    }
-    if (numNights <= 0) {
-      setError('Ngày check-out phải sau ngày check-in.');
+    if (validationMessage) {
+      setError(validationMessage);
       return;
     }
 
@@ -135,28 +176,41 @@ export default function BookingModal({ room, onClose, onSuccess }) {
           {/* Dates */}
           <div className="modal-dates-row">
             <div className="filter-group">
-              <label htmlFor="booking-checkin">Ngày Check-in</label>
+              <label htmlFor="booking-checkin">🏨 Check-in</label>
               <input
                 id="booking-checkin"
-                type="date"
+                type="datetime-local"
                 value={checkIn}
-                min={today}
-                onChange={(e) => setCheckIn(e.target.value)}
+                min={minCheckInDateTime}
+                onChange={(e) => {
+                  setCheckIn(e.target.value);
+                  // Reset checkout nếu checkout trùng ngày hoặc sớm hơn checkin mới
+                  const newCheckInDate = e.target.value ? getDatePart(e.target.value) : '';
+                  const currentCheckOutDate = checkOut ? getDatePart(checkOut) : '';
+                  if (newCheckInDate && currentCheckOutDate && currentCheckOutDate <= newCheckInDate) {
+                    setCheckOut('');
+                  }
+                }}
+                className={`datetime-input${isCheckInInvalid ? ' input-invalid' : ''}`}
                 required
               />
             </div>
             <div className="filter-group">
-              <label htmlFor="booking-checkout">Ngày Check-out</label>
+              <label htmlFor="booking-checkout">🚪 Check-out</label>
               <input
                 id="booking-checkout"
-                type="date"
+                type="datetime-local"
                 value={checkOut}
                 min={minCheckOut}
                 onChange={(e) => setCheckOut(e.target.value)}
+                className={`datetime-input${isCheckOutInvalid ? ' input-invalid' : ''}`}
                 required
               />
             </div>
           </div>
+          {shouldShowValidation && validationMessage && (
+            <div className="booking-validation-error">{validationMessage}</div>
+          )}
 
           {/* Guests */}
           <div className="modal-guests-row">

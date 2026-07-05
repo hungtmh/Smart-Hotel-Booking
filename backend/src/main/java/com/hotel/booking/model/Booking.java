@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -33,10 +33,10 @@ public class Booking {
     private Room room;
 
     @Column(name = "check_in_date", nullable = false)
-    private LocalDate checkInDate;
+    private LocalDateTime checkInDate;
 
     @Column(name = "check_out_date", nullable = false)
-    private LocalDate checkOutDate;
+    private LocalDateTime checkOutDate;
 
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
