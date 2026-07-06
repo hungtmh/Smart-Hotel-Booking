@@ -87,17 +87,6 @@ export function AuthProvider({ children }) {
   }
 
   /**
-   * Dang nhap bang tai khoan Google (OAuth).
-   */
-  async function signInWithGoogle() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-    });
-    if (error) throw error;
-    return data;
-  }
-
-  /**
    * Dang xuat nguoi dung.
    */
   async function signOut() {
@@ -116,7 +105,6 @@ export function AuthProvider({ children }) {
     loading,
     signIn,
     signUp,
-    signInWithGoogle,
     signOut,
     isAdmin,
     isAuthenticated: !!user,

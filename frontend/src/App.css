@@ -1297,6 +1297,302 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* ============================================================================
+   SEPAY VIETQR PAYMENT & DEMO BYPASS STYLES
+   ============================================================================ */
+.payment-qr-step, .payment-success-step {
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+.payment-qr-notice {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.payment-qr-content {
+  display: flex;
+  gap: 20px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  align-items: center;
+}
+
+@media (max-width: 500px) {
+  .payment-qr-content {
+    flex-direction: column;
+  }
+}
+
+.qr-image-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.qr-image {
+  width: 170px;
+  height: 170px;
+  object-fit: contain;
+}
+
+.qr-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.qr-info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.qr-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 6px;
+}
+
+.qr-info-row strong {
+  color: var(--text-heading);
+}
+
+.qr-amount {
+  color: var(--gold) !important;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.qr-content-code {
+  color: #6366f1 !important;
+  font-family: monospace;
+  font-size: 14px;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.copy-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-copy {
+  background: var(--border);
+  border: none;
+  color: var(--text-heading);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-copy:hover {
+  background: var(--gold);
+  color: #000;
+}
+
+.qr-warning {
+  font-size: 12px;
+  color: #888;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.polling-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(129, 140, 248, 0.3);
+  border-top-color: #818cf8;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.demo-bypass-box {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px dashed rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.demo-bypass-title {
+  font-weight: 700;
+  color: #10b981;
+  font-size: 14px;
+}
+
+.postman-code {
+  background: #1e1e2e;
+  color: #a6accd;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.demo-or {
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+  margin: 2px 0;
+}
+
+.demo-bypass-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-demo-bypass {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-demo-bypass:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-demo-bypass:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.payment-success-step {
+  text-align: center;
+  padding: 20px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.success-icon-animate {
+  font-size: 56px;
+  animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  80% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.payment-success-step h3 {
+  font-size: 22px;
+  color: #10b981;
+  margin: 0;
+}
+
+.success-subtitle {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+  max-width: 440px;
+}
+
+.status-badge-confirmed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.status-badge-pending {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.success-summary-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  width: 100%;
+  max-width: 420px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+  margin: 8px 0;
+}
+
+.success-summary-box strong {
+  color: var(--text-heading);
+}
+
+.justify-center {
+  justify-content: center !important;
+}
+
+/* ============================================================================
    BOOKING HISTORY (DASHBOARD)
    ============================================================================ */
 .bookings-section {

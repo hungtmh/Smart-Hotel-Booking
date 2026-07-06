@@ -6,6 +6,7 @@ D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\config\SecurityCo
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\controller\AdminController.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\controller\AuthController.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\controller\BookingController.java
+D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\controller\PaymentController.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\controller\PublicAuthController.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\controller\PublicTestController.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\controller\RoomTypeController.java

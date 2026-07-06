@@ -28,4 +28,9 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
      */
     @Query("SELECT b FROM Booking b WHERE b.checkOutDate <= :today AND b.status NOT IN ('COMPLETED', 'CANCELLED')")
     List<Booking> findExpiredBookings(@Param("today") LocalDateTime today);
+
+    /**
+     * Tim danh sach booking theo trang thai (VD: PENDING).
+     */
+    List<Booking> findByStatus(String status);
 }
