@@ -21,11 +21,13 @@ D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\exception\GlobalE
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\exception\ResourceNotFoundException.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\model\Booking.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\model\Hotel.java
+D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\model\PaymentTransaction.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\model\Profile.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\model\Room.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\model\RoomType.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\repository\BookingRepository.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\repository\HotelRepository.java
+D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\repository\PaymentTransactionRepository.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\repository\ProfileRepository.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\repository\RoomRepository.java
 D:\Smart-Hotel-Booking\backend\src\main\java\com\hotel\booking\repository\RoomTypeRepository.java

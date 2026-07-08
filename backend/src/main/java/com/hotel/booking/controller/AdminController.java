@@ -1,9 +1,13 @@
 package com.hotel.booking.controller;
 
 import com.hotel.booking.dto.*;
+import com.hotel.booking.model.Booking;
 import com.hotel.booking.model.Hotel;
+import com.hotel.booking.model.PaymentTransaction;
 import com.hotel.booking.model.Room;
 import com.hotel.booking.model.RoomType;
+import com.hotel.booking.repository.BookingRepository;
+import com.hotel.booking.repository.PaymentTransactionRepository;
 import com.hotel.booking.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -38,6 +43,8 @@ public class AdminController {
     private final AdminHotelService adminHotelService;
     private final AdminRoomTypeService adminRoomTypeService;
     private final AdminRoomService adminRoomService;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final BookingRepository bookingRepository;
 
     // ==============================
     // BOOKING MANAGEMENT
@@ -196,5 +203,53 @@ public class AdminController {
     public ResponseEntity<Void> deleteRoom(@PathVariable UUID id) {
         adminRoomService.deleteRoom(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ==============================
+    // PAYMENT TRANSACTIONS (LOG / ERROR CONTROL)
+    // ==============================
+
+    /**
+     * Lay danh sach tat ca giao dich thanh toan (Webhook tu SePay/Postman).
+     * GET /api/admin/transactions
+     */
+    @GetMapping("/transactions")
+    public ResponseEntity<List<PaymentTransaction>> getAllTransactions() {
+        return ResponseEntity.ok(paymentTransactionRepository.findAllByOrderByCreatedAtDesc());
+    }
+
+    /**
+     * Admin duyet thu cong 1 giao dich sai cu phap (UNMATCHED) va khop vao Booking.
+     * POST /api/admin/transactions/{txId}/resolve/{bookingId}
+     */
+    @PostMapping("/transactions/{txId}/resolve/{bookingId}")
+    public ResponseEntity<?> resolveTransaction(@PathVariable UUID txId, @PathVariable UUID bookingId) {
+        Optional<PaymentTransaction> txOpt = paymentTransactionRepository.findById(txId);
+        Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
+
+        if (txOpt.isEmpty() || bookingOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Khong tim thay giao dich hoac don dat phong."));
+        }
+
+        PaymentTransaction tx = txOpt.get();
+        Booking booking = bookingOpt.get();
+
+        // 1. Duyet booking sang CONFIRMED
+        booking.setStatus("CONFIRMED");
+        bookingRepository.save(booking);
+
+        // 2. Cap nhat giao dich sang MATCHED
+        tx.setStatus("MATCHED");
+        tx.setMatchedBookingId(booking.getId());
+        tx.setNote("✅ Admin duyệt thủ công - Khớp với Booking #" + booking.getId().toString().substring(0, 8).toUpperCase());
+        paymentTransactionRepository.save(tx);
+
+        log.info("==> [Admin Resolve] Da duyet thu cong giao dich {} vao booking {}", txId, bookingId);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "✅ Đã duyệt thủ công & khớp giao dịch vào Booking #" + booking.getId().toString().substring(0, 8).toUpperCase()
+        ));
     }
 }

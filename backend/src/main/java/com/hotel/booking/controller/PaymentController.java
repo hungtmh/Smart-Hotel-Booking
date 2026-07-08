@@ -1,14 +1,18 @@
 package com.hotel.booking.controller;
 
 import com.hotel.booking.model.Booking;
+import com.hotel.booking.model.PaymentTransaction;
 import com.hotel.booking.repository.BookingRepository;
+import com.hotel.booking.repository.PaymentTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -22,6 +26,7 @@ import java.util.*;
 public class PaymentController {
 
     private final BookingRepository bookingRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
 
     /**
      * 1. Kiem tra trang thai thanh toan cua booking.
@@ -73,6 +78,20 @@ public class PaymentController {
 
         booking.setStatus("CONFIRMED");
         bookingRepository.save(booking);
+
+        // Ghi lai vao log giao dich la MATCHED (ByPass)
+        PaymentTransaction tx = PaymentTransaction.builder()
+                .gateway("Demo ByPass")
+                .accountNumber("108879632507")
+                .transferAmount(booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO)
+                .content("PAY " + booking.getId().toString().substring(0, 8).toUpperCase())
+                .transactionDate(OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                .status("MATCHED")
+                .matchedBookingId(booking.getId())
+                .note("Xác nhận nhanh bằng nút Test Đồ án / Postman")
+                .build();
+        paymentTransactionRepository.save(tx);
+
         log.info("==> [Demo ByPass] Da xac nhan thanh toan CONFIRMED cho booking: {}", bookingId);
 
         return ResponseEntity.ok(Map.of(
@@ -86,15 +105,6 @@ public class PaymentController {
     /**
      * 3. API Gia lap Webhook tu SePay gui ve (Khi khach quet QR chuyen khoan that hoac gởi qua Postman).
      * URL: POST /api/public/payment/sepay-webhook
-     * Body JSON vi du:
-     * {
-     *   "gateway": "MBBank",
-     *   "transactionDate": "2026-07-05 22:30:00",
-     *   "accountNumber": "0389999999",
-     *   "content": "PAY 0AB3D809",
-     *   "transferAmount": 1500000,
-     *   "bookingId": "0ab3d809-..." (tuy chon)
-     * }
      */
     @PostMapping("/sepay-webhook")
     public ResponseEntity<?> receiveSePayWebhook(@RequestBody Map<String, Object> payload) {
@@ -111,15 +121,38 @@ public class PaymentController {
             }
         }
 
-        // 2. Neu khong co bookingId, tim theo noi dung chuyen khoan (content / des / description)
+        // 2. Lay thong tin giao dich tu payload
         String content = (String) payload.getOrDefault("content",
                          payload.getOrDefault("des",
                          payload.getOrDefault("description", "")));
+        String gateway = (String) payload.getOrDefault("gateway", "VietinBank");
+        String accountNumber = (String) payload.getOrDefault("accountNumber", "108879632507");
+        String dateStr = (String) payload.getOrDefault("transactionDate", OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         
+        BigDecimal amount = BigDecimal.ZERO;
+        Object amountObj = payload.get("transferAmount");
+        if (amountObj instanceof Number) {
+            amount = BigDecimal.valueOf(((Number) amountObj).doubleValue());
+        } else if (amountObj != null) {
+            try { amount = new BigDecimal(amountObj.toString()); } catch (Exception ignored) {}
+        }
+
         if (content == null || content.isBlank()) {
+            PaymentTransaction tx = PaymentTransaction.builder()
+                    .gateway(gateway)
+                    .accountNumber(accountNumber)
+                    .transferAmount(amount)
+                    .content("(Trống nội dung CK)")
+                    .transactionDate(dateStr)
+                    .status("UNMATCHED")
+                    .note("Chuyển khoản thiếu nội dung CK")
+                    .build();
+            paymentTransactionRepository.save(tx);
+
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
-                    "message", "Webhook thieu truong 'content' hoac 'bookingId' de nhan dien don dat phong."
+                    "message", "Webhook thiếu nội dung CK. Đã lưu vào danh sách 'Giao dịch lỗi' trên Admin.",
+                    "status", "UNMATCHED"
             ));
         }
 
@@ -132,7 +165,6 @@ public class PaymentController {
         for (Booking b : pendingBookings) {
             String shortId = b.getId().toString().substring(0, 8).toUpperCase();
             String fullId = b.getId().toString().toUpperCase();
-            // Kiem tra noi dung CK co chua ma shortId hoac fullId khong
             if (contentUpper.contains(shortId) || contentUpper.contains(fullId)) {
                 matchedBooking = b;
                 break;
@@ -141,15 +173,42 @@ public class PaymentController {
 
         if (matchedBooking == null) {
             log.warn("==> [SePay Webhook] Khong tim thay don PENDING nao khop voi noi dung CK: {}", contentUpper);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+            // GHI LẠI VÀO DB VỚI TRẠNG THÁI UNMATCHED (CHUYỂN KHOẢN SAI CÚ PHÁP)
+            PaymentTransaction tx = PaymentTransaction.builder()
+                    .gateway(gateway)
+                    .accountNumber(accountNumber)
+                    .transferAmount(amount)
+                    .content(content)
+                    .transactionDate(dateStr)
+                    .status("UNMATCHED")
+                    .note("Chuyển khoản sai cú pháp hoặc không tìm thấy mã đơn phòng PENDING tương ứng")
+                    .build();
+            paymentTransactionRepository.save(tx);
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                     "success", false,
-                    "message", "Khong tim thay don dat phong PENDING nao khop voi noi dung: " + content
+                    "message", "⚠️ Chuyển khoản sai cú pháp hoặc không tìm thấy đơn PENDING. Đã lưu vào danh sách 'Giao dịch lỗi' trên trang Admin để kiểm tra thủ công.",
+                    "status", "UNMATCHED",
+                    "transactionId", tx.getId()
             ));
         }
 
-        // Xac nhan booking da tim thay
+        // Xac nhan booking da tim thay -> MATCHED
         matchedBooking.setStatus("CONFIRMED");
         bookingRepository.save(matchedBooking);
+
+        PaymentTransaction tx = PaymentTransaction.builder()
+                .gateway(gateway)
+                .accountNumber(accountNumber)
+                .transferAmount(amount)
+                .content(content)
+                .transactionDate(dateStr)
+                .status("MATCHED")
+                .matchedBookingId(matchedBooking.getId())
+                .note("Tự động khớp thành công theo mã Booking #" + matchedBooking.getId().toString().substring(0, 8).toUpperCase())
+                .build();
+        paymentTransactionRepository.save(tx);
+
         log.info("==> [SePay Webhook] Da xac nhan thanh toan thanh cong cho booking: {} (Khop theo shortId: {})",
                 matchedBooking.getId(), matchedBooking.getId().toString().substring(0, 8).toUpperCase());
 
@@ -158,6 +217,44 @@ public class PaymentController {
                 "message", "✅ [SePay Webhook] Đã xác nhận chuyển khoản & duyệt Booking: " + matchedBooking.getId(),
                 "bookingId", matchedBooking.getId(),
                 "status", "CONFIRMED"
+        ));
+    }
+
+    /**
+     * 4. API Gia lap co nguoi chuyen khoan SAI CU PHAP (Dinh cho demo Bao ve Do an).
+     * URL: POST /api/public/payment/demo-unmatched
+     */
+    @PostMapping("/demo-unmatched")
+    public ResponseEntity<?> createDemoUnmatchedTransaction(@RequestBody(required = false) Map<String, Object> body) {
+        BigDecimal amount = BigDecimal.valueOf(1500000);
+        String content = "Thanh toan tien phong (Khach nhap sai cu phap)";
+        if (body != null) {
+            if (body.get("amount") != null) {
+                try { amount = new BigDecimal(body.get("amount").toString()); } catch (Exception ignored) {}
+            }
+            if (body.get("content") != null) {
+                content = body.get("content").toString();
+            }
+        }
+
+        PaymentTransaction tx = PaymentTransaction.builder()
+                .gateway("VietinBank")
+                .accountNumber("108879632507")
+                .transferAmount(amount)
+                .content(content)
+                .transactionDate(OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                .status("UNMATCHED")
+                .note("⚡ [Demo Đồ Án] Giả lập khách hàng chuyển khoản sai cú pháp")
+                .build();
+        paymentTransactionRepository.save(tx);
+
+        log.info("==> [Demo Unmatched] Da tao giao dich sai cu phap ID: {}", tx.getId());
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "🧪 Đã giả lập 1 giao dịch CHUYỂN KHOẢN SAI CÚ PHÁP vào danh sách Admin!",
+                "transactionId", tx.getId(),
+                "status", "UNMATCHED"
         ));
     }
 }

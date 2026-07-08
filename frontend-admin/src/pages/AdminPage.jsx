@@ -38,6 +38,11 @@ export default function AdminPage() {
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [roomLoading, setRoomLoading] = useState(false);
 
+  // ---- Transaction state ----
+  const [transactions, setTransactions] = useState([]);
+  const [txLoading, setTxLoading] = useState(false);
+  const [selectedBookingForTx, setSelectedBookingForTx] = useState({});
+
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = 'success') => {
@@ -223,6 +228,49 @@ export default function AdminPage() {
     setRoomForm({ roomTypeId: room.roomType?.id || '', roomNumber: room.roomNumber, floor: room.floor || 1, status: room.status });
   };
 
+  // ==================== TRANSACTIONS ====================
+  const loadTransactions = useCallback(async () => {
+    if (!token) return;
+    setTxLoading(true);
+    try {
+      const data = await apiFetch('/transactions');
+      setTransactions(data || []);
+    } catch (e) { showToast(e.message, 'error'); }
+    finally { setTxLoading(false); }
+  }, [token, apiFetch]);
+
+  const resolveTransaction = async (txId) => {
+    const bookingId = selectedBookingForTx[txId];
+    if (!bookingId) {
+      showToast('Vui lòng chọn 1 đơn phòng PENDING để khớp', 'error');
+      return;
+    }
+    try {
+      await apiFetch(`/transactions/${txId}/resolve/${bookingId}`, { method: 'POST' });
+      showToast('✅ Đã duyệt thủ công & khớp giao dịch thành công!');
+      loadTransactions();
+      loadBookings();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleDemoUnmatchedTx = async () => {
+    try {
+      const res = await fetch('http://localhost:8080/api/public/payment/demo-unmatched', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 1500000, content: 'Thanh toan tien phong (Khach nhap sai cu phap)' })
+      });
+      if (res.ok) {
+        showToast('🧪 Đã giả lập 1 giao dịch sai cú pháp vào Admin!');
+        loadTransactions();
+      }
+    } catch (e) {
+      showToast('Lỗi kết nối API giả lập', 'error');
+    }
+  };
+
   // Load data khi doi tab
   useEffect(() => {
     if (!token) return;
@@ -230,7 +278,8 @@ export default function AdminPage() {
     if (activeTab === 'hotels') loadHotels();
     if (activeTab === 'room-types') { loadRoomTypes(); loadHotels(); }
     if (activeTab === 'rooms') { loadRooms(); loadRoomTypes(); }
-  }, [activeTab, token]);
+    if (activeTab === 'transactions') { loadBookings(); loadTransactions(); }
+  }, [activeTab, token, loadBookings, loadHotels, loadRoomTypes, loadRooms, loadTransactions]);
 
   const statusBadge = (status) => {
     const map = { PENDING: 'badge-pending', CONFIRMED: 'badge-confirmed', CANCELLED: 'badge-cancelled', COMPLETED: 'badge-completed' };
@@ -277,6 +326,7 @@ export default function AdminPage() {
           { key: 'hotels', label: 'Khách Sạn' },
           { key: 'room-types', label: 'Loại Phòng' },
           { key: 'rooms', label: 'Phòng' },
+          { key: 'transactions', label: '⚠️ Giao dịch lỗi CK' },
         ].map(tab => (
           <button
             key={tab.key}
@@ -601,6 +651,107 @@ export default function AdminPage() {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ==================== TAB TRANSACTIONS (KIỂM SOÁT CK) ==================== */}
+        {activeTab === 'transactions' && (
+          <div className="admin-section">
+            <div className="admin-section-header">
+              <div>
+                <h2>Kiểm Soát Giao Dịch Webhook (SePay / VietQR)</h2>
+                <p className="admin-subtitle">Danh sách tất cả chuyển khoản. Các chuyển khoản sai cú pháp (UNMATCHED) cần Admin đối chiếu & duyệt thủ công.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button className="admin-btn admin-btn-confirm" onClick={handleDemoUnmatchedTx}>
+                  ⚡ [Test Đồ Án] Giả lập CK sai cú pháp
+                </button>
+                <button className="admin-refresh-btn" onClick={loadTransactions}>Làm mới</button>
+              </div>
+            </div>
+            {txLoading ? <div className="admin-spinner">Đang tải...</div> : (
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Ngày CK</th>
+                      <th>Ngân hàng / STK</th>
+                      <th>Số tiền</th>
+                      <th>Nội dung CK (Khách nhập)</th>
+                      <th>Trạng thái</th>
+                      <th>Duyệt thủ công (Đối chiếu)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.length === 0 && (
+                      <tr><td colSpan="6" className="admin-empty">Chưa có giao dịch chuyển khoản nào.</td></tr>
+                    )}
+                    {transactions.map(tx => {
+                      const pendingList = bookings.filter(b => b.status === 'PENDING');
+                      return (
+                        <tr key={tx.id} style={tx.status === 'UNMATCHED' ? { background: 'rgba(251, 191, 36, 0.08)' } : {}}>
+                          <td>{tx.transactionDate || new Date(tx.createdAt).toLocaleString('vi-VN')}</td>
+                          <td>
+                            <div className="admin-cell-primary">{tx.gateway}</div>
+                            <div className="admin-cell-secondary">{tx.accountNumber}</div>
+                          </td>
+                          <td className="admin-amount" style={{ color: '#10b981', fontWeight: 'bold' }}>
+                            {tx.transferAmount?.toLocaleString('vi-VN')} ₫
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 'bold', color: tx.status === 'UNMATCHED' ? '#f59e0b' : '#6366f1' }}>
+                              "{tx.content}"
+                            </div>
+                            {tx.note && <div className="admin-cell-secondary" style={{ fontStyle: 'italic', marginTop: '4px' }}>{tx.note}</div>}
+                          </td>
+                          <td>
+                            {tx.status === 'UNMATCHED' ? (
+                              <span className="admin-badge badge-pending" style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #f59e0b' }}>
+                                ⚠️ Sai cú pháp
+                              </span>
+                            ) : (
+                              <span className="admin-badge badge-confirmed">
+                                ✓ Đã khớp
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {tx.status === 'UNMATCHED' ? (
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <select
+                                  className="admin-input"
+                                  style={{ padding: '6px', fontSize: '13px', width: '220px' }}
+                                  value={selectedBookingForTx[tx.id] || ''}
+                                  onChange={e => setSelectedBookingForTx(prev => ({ ...prev, [tx.id]: e.target.value }))}
+                                >
+                                  <option value="">-- Chọn đơn PENDING --</option>
+                                  {pendingList.map(b => (
+                                    <option key={b.bookingId} value={b.bookingId}>
+                                      #{b.bookingId.slice(0, 8).toUpperCase()} - Phòng {b.roomNumber} ({b.totalAmount?.toLocaleString('vi-VN')} ₫)
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  className="admin-btn admin-btn-primary"
+                                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                                  onClick={() => resolveTransaction(tx.id)}
+                                >
+                                  ✓ Duyệt
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="admin-cell-secondary">
+                                {tx.matchedBookingId ? `Khớp với #${tx.matchedBookingId.slice(0, 8).toUpperCase()}` : '—'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
