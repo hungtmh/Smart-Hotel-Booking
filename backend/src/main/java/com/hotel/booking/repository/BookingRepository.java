@@ -2,6 +2,7 @@ package com.hotel.booking.repository;
 
 import com.hotel.booking.model.Booking;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -33,4 +34,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
      * Tim danh sach booking theo trang thai (VD: PENDING).
      */
     List<Booking> findByStatus(String status);
+
+    /**
+     * Cap nhat trang thai booking truc tiep bang JPQL (tranh viec load entity day du).
+     * Chi cap nhat khi user_id khop va trang thai hien tai la PENDING.
+     */
+    @Modifying
+    @Query("UPDATE Booking b SET b.status = :newStatus WHERE b.id = :bookingId AND b.user.id = :userId AND b.status = 'PENDING'")
+    int cancelPendingBooking(@Param("bookingId") UUID bookingId, @Param("userId") UUID userId, @Param("newStatus") String newStatus);
 }

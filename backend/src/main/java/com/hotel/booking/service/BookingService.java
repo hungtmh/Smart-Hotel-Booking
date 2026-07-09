@@ -106,6 +106,39 @@ public class BookingService {
     }
 
     /**
+     * User tu huy booking cua chinh minh (chi duoc huy khi PENDING).
+     * Dung JPQL UPDATE truc tiep de tranh cac van de ve lazy loading va RLS.
+     */
+    @Transactional
+    public void cancelMyBooking(UUID bookingId, String userId) {
+        UUID userUUID;
+        try {
+            userUUID = UUID.fromString(userId);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("User ID khong hop le.");
+        }
+
+        // Kiem tra booking ton tai va thuoc ve user truoc
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay booking: " + bookingId));
+
+        if (!booking.getUser().getId().equals(userUUID)) {
+            throw new IllegalStateException("Khong co quyen huy booking nay.");
+        }
+
+        if (!"PENDING".equalsIgnoreCase(booking.getStatus())) {
+            throw new IllegalStateException("Chi co the huy booking dang o trang thai PENDING.");
+        }
+
+        // Dung JPQL UPDATE truc tiep de cap nhat trang thai
+        int updated = bookingRepository.cancelPendingBooking(bookingId, userUUID, "CANCELLED");
+        if (updated == 0) {
+            throw new IllegalStateException("Khong the huy booking. Vui long thu lai.");
+        }
+        log.info("User {} da huy booking: {}", userId, bookingId);
+    }
+
+    /**
      * Lay danh sach tat ca booking cua user hien tai.
      */
     @Transactional(readOnly = true)

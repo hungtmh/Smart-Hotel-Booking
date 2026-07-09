@@ -28,7 +28,9 @@ export default function AdminPage() {
 
   // ---- RoomType state ----
   const [roomTypes, setRoomTypes] = useState([]);
-  const [roomTypeForm, setRoomTypeForm] = useState({ hotelId: '', name: '', basePrice: '', capacityAdults: 2, capacityChildren: 0, areaSqm: '', description: '' });
+  const [roomTypeForm, setRoomTypeForm] = useState({ hotelId: '', name: '', basePrice: '', capacityAdults: 2, capacityChildren: 0, areaSqm: '', description: '', amenities: [], images: [] });
+  const [amenityInput, setAmenityInput] = useState('');
+  const [imageInput, setImageInput] = useState('');
   const [editingRoomTypeId, setEditingRoomTypeId] = useState(null);
   const [roomTypeLoading, setRoomTypeLoading] = useState(false);
 
@@ -155,6 +157,30 @@ export default function AdminPage() {
     finally { setRoomTypeLoading(false); }
   }, [token, apiFetch]);
 
+  const addAmenity = () => {
+    const val = amenityInput.trim();
+    if (val && !roomTypeForm.amenities.includes(val)) {
+      setRoomTypeForm(f => ({ ...f, amenities: [...f.amenities, val] }));
+    }
+    setAmenityInput('');
+  };
+
+  const removeAmenity = (item) => {
+    setRoomTypeForm(f => ({ ...f, amenities: f.amenities.filter(a => a !== item) }));
+  };
+
+  const addImage = () => {
+    const val = imageInput.trim();
+    if (val && !roomTypeForm.images.includes(val)) {
+      setRoomTypeForm(f => ({ ...f, images: [...f.images, val] }));
+    }
+    setImageInput('');
+  };
+
+  const removeImage = (url) => {
+    setRoomTypeForm(f => ({ ...f, images: f.images.filter(i => i !== url) }));
+  };
+
   const saveRoomType = async (e) => {
     e.preventDefault();
     try {
@@ -166,7 +192,9 @@ export default function AdminPage() {
         await apiFetch('/room-types', { method: 'POST', body: JSON.stringify(payload) });
         showToast('Đã tạo loại phòng mới!');
       }
-      setRoomTypeForm({ hotelId: '', name: '', basePrice: '', capacityAdults: 2, capacityChildren: 0, areaSqm: '', description: '' });
+      setRoomTypeForm({ hotelId: '', name: '', basePrice: '', capacityAdults: 2, capacityChildren: 0, areaSqm: '', description: '', amenities: [], images: [] });
+      setAmenityInput('');
+      setImageInput('');
       setEditingRoomTypeId(null);
       loadRoomTypes();
     } catch (e) { showToast(e.message, 'error'); }
@@ -183,7 +211,9 @@ export default function AdminPage() {
 
   const editRoomType = (rt) => {
     setEditingRoomTypeId(rt.id);
-    setRoomTypeForm({ hotelId: rt.hotel?.id || '', name: rt.name, basePrice: rt.basePrice, capacityAdults: rt.capacityAdults, capacityChildren: rt.capacityChildren, areaSqm: rt.areaSqm || '', description: rt.description || '' });
+    setRoomTypeForm({ hotelId: rt.hotel?.id || '', name: rt.name, basePrice: rt.basePrice, capacityAdults: rt.capacityAdults, capacityChildren: rt.capacityChildren, areaSqm: rt.areaSqm || '', description: rt.description || '', amenities: rt.amenities || [], images: rt.images || [] });
+    setAmenityInput('');
+    setImageInput('');
   };
 
   // ==================== ROOMS ====================
@@ -531,12 +561,63 @@ export default function AdminPage() {
                   <label>Mô tả</label>
                   <textarea rows={2} value={roomTypeForm.description} onChange={e => setRoomTypeForm(f => ({ ...f, description: e.target.value }))} placeholder="Phòng hướng biển với tầm nhìn toàn cảnh..." />
                 </div>
+
+                {/* Amenities */}
+                <div className="admin-form-group">
+                  <label>Tiện nghi (Amenities)</label>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      value={amenityInput}
+                      onChange={e => setAmenityInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAmenity(); } }}
+                      placeholder="WiFi, Bể bơi, Spa... rồi nhấn Enter"
+                      style={{ flex: 1 }}
+                    />
+                    <button type="button" className="admin-btn admin-btn-secondary" onClick={addAmenity}>+ Thêm</button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {roomTypeForm.amenities.map(a => (
+                      <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '20px', padding: '3px 10px', fontSize: '13px', fontWeight: 500 }}>
+                        {a}
+                        <button type="button" onClick={() => removeAmenity(a)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '14px', lineHeight: 1, padding: 0 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Images */}
+                <div className="admin-form-group">
+                  <label>Ảnh phòng (URL)</label>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      value={imageInput}
+                      onChange={e => setImageInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addImage(); } }}
+                      placeholder="https://example.com/room.jpg rồi nhấn Enter"
+                      style={{ flex: 1 }}
+                    />
+                    <button type="button" className="admin-btn admin-btn-secondary" onClick={addImage}>+ Thêm</button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {roomTypeForm.images.map((url, idx) => (
+                      <div key={idx} style={{ position: 'relative', width: '80px', height: '60px' }}>
+                        <img src={url} alt={`img-${idx}`} style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)' }} />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(url)}
+                          style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', border: 'none', color: 'white', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="admin-form-actions">
                   <button type="submit" className="admin-btn admin-btn-primary">
                     {editingRoomTypeId ? 'Lưu thay đổi' : 'Thêm mới'}
                   </button>
                   {editingRoomTypeId && (
-                    <button type="button" className="admin-btn admin-btn-secondary" onClick={() => { setEditingRoomTypeId(null); setRoomTypeForm({ hotelId: '', name: '', basePrice: '', capacityAdults: 2, capacityChildren: 0, areaSqm: '', description: '' }); }}>
+                    <button type="button" className="admin-btn admin-btn-secondary" onClick={() => { setEditingRoomTypeId(null); setRoomTypeForm({ hotelId: '', name: '', basePrice: '', capacityAdults: 2, capacityChildren: 0, areaSqm: '', description: '', amenities: [], images: [] }); setAmenityInput(''); setImageInput(''); }}>
                       Hủy sửa
                     </button>
                   )}
