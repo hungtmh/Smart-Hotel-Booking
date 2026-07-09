@@ -128,10 +128,11 @@ public class PaymentService {
             paymentTransactionRepository.save(tx);
 
             return Map.of(
-                    "success", false,
-                    "message", "Webhook thiếu nội dung CK. Đã lưu vào danh sách 'Giao dịch lỗi' trên Admin.",
+                    "success", true,
+                    "matched", false,
+                    "message", "⚠️ Webhook thiếu nội dung CK. Đã lưu vào danh sách 'Giao dịch lỗi (UNMATCHED)' trên Admin để duyệt thủ công.",
                     "status", "UNMATCHED",
-                    "error", true
+                    "transactionId", tx.getId()
             );
         }
 
@@ -164,11 +165,11 @@ public class PaymentService {
             paymentTransactionRepository.save(tx);
 
             return Map.of(
-                    "success", false,
-                    "message", "⚠️ Chuyển khoản sai cú pháp hoặc không tìm thấy đơn PENDING. Đã lưu vào danh sách 'Giao dịch lỗi' trên trang Admin để kiểm tra thủ công.",
+                    "success", true,
+                    "matched", false,
+                    "message", "⚠️ Chuyển khoản sai cú pháp hoặc không tìm thấy đơn PENDING. Đã ghi nhận vào danh sách 'Giao dịch lỗi (UNMATCHED)' trên trang Admin để kiểm tra và duyệt thủ công.",
                     "status", "UNMATCHED",
-                    "transactionId", tx.getId(),
-                    "error", true
+                    "transactionId", tx.getId()
             );
         }
 

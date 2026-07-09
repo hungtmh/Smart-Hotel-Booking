@@ -224,32 +224,105 @@ public class AdminController {
      */
     @PostMapping("/transactions/{txId}/resolve/{bookingId}")
     public ResponseEntity<?> resolveTransaction(@PathVariable UUID txId, @PathVariable UUID bookingId) {
-        Optional<PaymentTransaction> txOpt = paymentTransactionRepository.findById(txId);
-        Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
+        try {
+            Optional<PaymentTransaction> txOpt = paymentTransactionRepository.findById(txId);
+            Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
 
-        if (txOpt.isEmpty() || bookingOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("message", "Khong tim thay giao dich hoac don dat phong."));
+            if (txOpt.isEmpty() || bookingOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "Khong tim thay giao dich hoac don dat phong."));
+            }
+
+            PaymentTransaction tx = txOpt.get();
+            Booking booking = bookingOpt.get();
+
+            // 1. Duyet booking sang CONFIRMED
+            booking.setStatus("CONFIRMED");
+            bookingRepository.save(booking);
+
+            // 2. Cap nhat giao dich sang MATCHED
+            tx.setStatus("MATCHED");
+            tx.setMatchedBookingId(booking.getId());
+            tx.setNote("✅ Admin duyệt thủ công - Khớp với Booking #" + booking.getId().toString().substring(0, 8).toUpperCase());
+            paymentTransactionRepository.save(tx);
+
+            log.info("==> [Admin Resolve] Da duyet thu cong giao dich {} vao booking {}", txId, bookingId);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "✅ Đã duyệt thủ công & khớp giao dịch vào Booking #" + booking.getId().toString().substring(0, 8).toUpperCase(),
+                    "bookingId", booking.getId(),
+                    "transactionId", tx.getId()
+            ));
+        } catch (Exception e) {
+            log.error("Loi khi resolve transaction: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Lỗi khi duyệt thủ công giao dịch: " + e.getMessage()));
         }
+    }
 
-        PaymentTransaction tx = txOpt.get();
-        Booking booking = bookingOpt.get();
+    /**
+     * Admin duyet nhanh 1 click (Khong can chon dropdown).
+     * Tu dong khop voi don PENDING co cung so tien hoac don PENDING moi nhat.
+     * POST /api/admin/transactions/{txId}/resolve
+     */
+    @PostMapping("/transactions/{txId}/resolve")
+    public ResponseEntity<?> resolveTransactionAuto(@PathVariable UUID txId) {
+        try {
+            Optional<PaymentTransaction> txOpt = paymentTransactionRepository.findById(txId);
+            if (txOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "Không tìm thấy giao dịch."));
+            }
+            PaymentTransaction tx = txOpt.get();
 
-        // 1. Duyet booking sang CONFIRMED
-        booking.setStatus("CONFIRMED");
-        bookingRepository.save(booking);
+            List<Booking> pendingList = bookingRepository.findByStatus("PENDING");
+            Booking matched = null;
+            for (Booking b : pendingList) {
+                if (b.getTotalAmount() != null && tx.getTransferAmount() != null &&
+                        b.getTotalAmount().compareTo(tx.getTransferAmount()) == 0) {
+                    matched = b;
+                    break;
+                }
+            }
+            if (matched == null && !pendingList.isEmpty()) {
+                matched = pendingList.get(0);
+            }
 
-        // 2. Cap nhat giao dich sang MATCHED
-        tx.setStatus("MATCHED");
-        tx.setMatchedBookingId(booking.getId());
-        tx.setNote("✅ Admin duyệt thủ công - Khớp với Booking #" + booking.getId().toString().substring(0, 8).toUpperCase());
-        paymentTransactionRepository.save(tx);
+            if (matched != null) {
+                matched.setStatus("CONFIRMED");
+                bookingRepository.save(matched);
 
-        log.info("==> [Admin Resolve] Da duyet thu cong giao dich {} vao booking {}", txId, bookingId);
+                tx.setStatus("MATCHED");
+                tx.setMatchedBookingId(matched.getId());
+                tx.setNote("✅ Admin duyệt nhanh 1 click - Khớp với Booking #" + matched.getId().toString().substring(0, 8).toUpperCase());
+                paymentTransactionRepository.save(tx);
 
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "✅ Đã duyệt thủ công & khớp giao dịch vào Booking #" + booking.getId().toString().substring(0, 8).toUpperCase()
-        ));
+                log.info("==> [Admin Resolve Auto] Da duyet nhanh {} khop vao {}", txId, matched.getId());
+
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "✅ Đã duyệt 1-click & khớp với Booking #" + matched.getId().toString().substring(0, 8).toUpperCase(),
+                        "bookingId", matched.getId(),
+                        "transactionId", tx.getId()
+                ));
+            } else {
+                tx.setStatus("MATCHED");
+                tx.setNote("✅ Admin duyệt nhanh (Ghi nhận hợp lệ)");
+                paymentTransactionRepository.save(tx);
+
+                log.info("==> [Admin Resolve Auto] Da duyet nhanh {} (Khong co don PENDING)", txId);
+
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "✅ Đã duyệt nhanh giao dịch thành công!",
+                        "transactionId", tx.getId()
+                ));
+            }
+        } catch (Exception e) {
+            log.error("Loi khi resolve auto: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Lỗi khi duyệt nhanh giao dịch: " + e.getMessage()));
+        }
     }
 }

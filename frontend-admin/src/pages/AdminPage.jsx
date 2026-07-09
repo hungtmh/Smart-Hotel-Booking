@@ -270,14 +270,9 @@ export default function AdminPage() {
   }, [token, apiFetch]);
 
   const resolveTransaction = async (txId) => {
-    const bookingId = selectedBookingForTx[txId];
-    if (!bookingId) {
-      showToast('Vui lòng chọn 1 đơn phòng PENDING để khớp', 'error');
-      return;
-    }
     try {
-      await apiFetch(`/transactions/${txId}/resolve/${bookingId}`, { method: 'POST' });
-      showToast('✅ Đã duyệt thủ công & khớp giao dịch thành công!');
+      const res = await apiFetch(`/transactions/${txId}/resolve`, { method: 'POST' });
+      showToast(res?.message || '✅ Đã duyệt và khớp giao dịch thành công!');
       loadTransactions();
       loadBookings();
     } catch (e) {
@@ -802,28 +797,13 @@ export default function AdminPage() {
                           </td>
                           <td>
                             {tx.status === 'UNMATCHED' ? (
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <select
-                                  className="admin-input"
-                                  style={{ padding: '6px', fontSize: '13px', width: '220px' }}
-                                  value={selectedBookingForTx[tx.id] || ''}
-                                  onChange={e => setSelectedBookingForTx(prev => ({ ...prev, [tx.id]: e.target.value }))}
-                                >
-                                  <option value="">-- Chọn đơn PENDING --</option>
-                                  {pendingList.map(b => (
-                                    <option key={b.bookingId} value={b.bookingId}>
-                                      #{b.bookingId.slice(0, 8).toUpperCase()} - Phòng {b.roomNumber} ({b.totalAmount?.toLocaleString('vi-VN')} ₫)
-                                    </option>
-                                  ))}
-                                </select>
-                                <button
-                                  className="admin-btn admin-btn-primary"
-                                  style={{ padding: '6px 12px', fontSize: '13px' }}
-                                  onClick={() => resolveTransaction(tx.id)}
-                                >
-                                  ✓ Duyệt
-                                </button>
-                              </div>
+                              <button
+                                className="admin-btn admin-btn-primary"
+                                style={{ padding: '6px 16px', fontSize: '13px', fontWeight: '600' }}
+                                onClick={() => resolveTransaction(tx.id)}
+                              >
+                                ✓ Duyệt ngay
+                              </button>
                             ) : (
                               <span className="admin-cell-secondary">
                                 {tx.matchedBookingId ? `Khớp với #${tx.matchedBookingId.slice(0, 8).toUpperCase()}` : '—'}
