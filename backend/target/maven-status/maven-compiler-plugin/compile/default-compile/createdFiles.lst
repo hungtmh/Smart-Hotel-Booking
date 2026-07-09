@@ -2,16 +2,19 @@ com\hotel\booking\BookingApplication.class
 com\hotel\booking\config\CorsConfig$1.class
 com\hotel\booking\model\Room.class
 com\hotel\booking\repository\ProfileRepository.class
+com\hotel\booking\service\PaymentService.class
 com\hotel\booking\dto\RoomTypeRequest.class
 com\hotel\booking\model\Profile.class
 com\hotel\booking\controller\AdminController.class
 com\hotel\booking\dto\BookingRequest.class
 com\hotel\booking\repository\HotelRepository.class
 com\hotel\booking\service\ProfileService.class
+com\hotel\booking\repository\PaymentTransactionRepository.class
 com\hotel\booking\config\BookingScheduler.class
 com\hotel\booking\controller\BookingController.class
 com\hotel\booking\model\Booking.class
 com\hotel\booking\model\Hotel.class
+com\hotel\booking\model\PaymentTransaction$PaymentTransactionBuilder.class
 com\hotel\booking\model\RoomType.class
 com\hotel\booking\controller\PublicTestController.class
 com\hotel\booking\config\CorsConfig.class
@@ -21,6 +24,7 @@ com\hotel\booking\service\RoomTypeService.class
 com\hotel\booking\config\JwtAuthenticationFilter.class
 com\hotel\booking\controller\RoomTypeController.class
 com\hotel\booking\dto\HotelRequest.class
+com\hotel\booking\controller\PaymentController.class
 com\hotel\booking\exception\ErrorResponse.class
 com\hotel\booking\controller\AuthController.class
 com\hotel\booking\service\BookingService.class
@@ -32,6 +36,7 @@ com\hotel\booking\dto\BookingResponse.class
 com\hotel\booking\dto\ProfileResponse.class
 com\hotel\booking\service\AdminRoomTypeService.class
 com\hotel\booking\service\AdminBookingService.class
+com\hotel\booking\model\PaymentTransaction.class
 com\hotel\booking\controller\PublicAuthController.class
 com\hotel\booking\dto\BookingResponse$BookingResponseBuilder.class
 com\hotel\booking\repository\RoomTypeRepository.class

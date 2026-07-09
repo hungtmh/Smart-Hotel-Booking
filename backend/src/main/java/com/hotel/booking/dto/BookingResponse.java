@@ -20,8 +20,15 @@ public class BookingResponse {
     // Thong tin phong
     private String roomNumber;
     private String roomTypeName;
+    private String roomImage;
+    private String roomDescription;
+    private Double roomBasePrice;
+    private Double areaSqm;
+    private Integer capacityAdults;
+    private Integer capacityChildren;
     private String hotelName;
     private String hotelCity;
+    private String hotelImage;
 
     // Thong tin dat phong
     private LocalDateTime checkInDate;

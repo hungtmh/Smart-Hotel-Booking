@@ -1,10 +1,16 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+import { useAuth } from '../context/AuthContext';
 
 export default function LandingPage() {
+  const { isAuthenticated, isAdmin } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+
+  if (isAuthenticated && !isAdmin) {
+    return <Navigate to="/search" replace />;
+  }
 
   useEffect(() => {
     AOS.init({

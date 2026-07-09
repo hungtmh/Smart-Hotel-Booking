@@ -16,7 +16,7 @@ export default function Navbar() {
         </Link>
 
         <div className="nav-links">
-          <Link to="/" className="nav-link">Trang chủ</Link>
+          {!user && <Link to="/" className="nav-link">Trang chủ</Link>}
 
           {user ? (
             <>

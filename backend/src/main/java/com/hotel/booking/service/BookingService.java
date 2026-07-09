@@ -4,6 +4,7 @@ import com.hotel.booking.dto.BookingRequest;
 import com.hotel.booking.dto.BookingResponse;
 import com.hotel.booking.exception.ResourceNotFoundException;
 import com.hotel.booking.model.Booking;
+import com.hotel.booking.model.Hotel;
 import com.hotel.booking.model.Profile;
 import com.hotel.booking.model.Room;
 import com.hotel.booking.model.RoomType;
@@ -38,11 +39,11 @@ public class BookingService {
     /**
      * Tao mot booking moi.
      * Logic:
-     *  1. Kiem tra ngay hop le.
-     *  2. Tim RoomType theo ID.
-     *  3. Tim phong vat ly (Room) con trong trong khoang ngay yeu cau.
-     *  4. Tinh tong tien = gia co ban * so dem.
-     *  5. Luu Booking vao DB.
+     * 1. Kiem tra ngay hop le.
+     * 2. Tim RoomType theo ID.
+     * 3. Tim phong vat ly (Room) con trong trong khoang ngay yeu cau.
+     * 4. Tinh tong tien = gia co ban * so dem.
+     * 5. Luu Booking vao DB.
      */
     @Transactional
     public BookingResponse createBooking(BookingRequest request, String userId) {
@@ -56,14 +57,14 @@ public class BookingService {
 
         // 2. Tim RoomType
         RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
-                .orElseThrow(() -> new ResourceNotFoundException("Loai phong khong ton tai: " + request.getRoomTypeId()));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Loai phong khong ton tai: " + request.getRoomTypeId()));
 
         // 3. Tim mot phong vat ly con trong
         List<Room> availableRooms = roomRepository.findAvailableRooms(
                 request.getRoomTypeId(),
                 request.getCheckInDate(),
-                request.getCheckOutDate()
-        );
+                request.getCheckOutDate());
 
         if (availableRooms.isEmpty()) {
             throw new IllegalStateException("Khong con phong trong trong khoang thoi gian " +
@@ -131,7 +132,7 @@ public class BookingService {
         }
 
         // Dung JPQL UPDATE truc tiep de cap nhat trang thai
-        int updated = bookingRepository.cancelPendingBooking(bookingId, userUUID, "CANCELLED");
+        int updated = bookingRepository.updatePendingBookingStatus(bookingId, userUUID, "CANCELLED");
         if (updated == 0) {
             throw new IllegalStateException("Khong the huy booking. Vui long thu lai.");
         }
@@ -156,13 +157,21 @@ public class BookingService {
      * Chuyen doi Booking entity sang BookingResponse DTO.
      */
     private BookingResponse toResponse(Booking booking, int numNights) {
+        RoomType roomType = booking.getRoom().getRoomType();
         return BookingResponse.builder()
                 .bookingId(booking.getId())
                 .status(booking.getStatus())
                 .roomNumber(booking.getRoom().getRoomNumber())
-                .roomTypeName(booking.getRoom().getRoomType().getName())
-                .hotelName(booking.getRoom().getRoomType().getHotel().getName())
-                .hotelCity(booking.getRoom().getRoomType().getHotel().getCity())
+                .roomTypeName(roomType.getName())
+                .roomImage(firstImage(roomType))
+                .roomDescription(roomType.getDescription())
+                .roomBasePrice(roomType.getBasePrice())
+                .areaSqm(roomType.getAreaSqm())
+                .capacityAdults(roomType.getCapacityAdults())
+                .capacityChildren(roomType.getCapacityChildren())
+                .hotelName(roomType.getHotel().getName())
+                .hotelCity(roomType.getHotel().getCity())
+                .hotelImage(firstHotelImage(roomType.getHotel()))
                 .checkInDate(booking.getCheckInDate())
                 .checkOutDate(booking.getCheckOutDate())
                 .numNights(numNights)
@@ -172,6 +181,30 @@ public class BookingService {
                 .specialRequests(booking.getSpecialRequests())
                 .createdAt(booking.getCreatedAt())
                 .build();
+    }
+
+    private String firstImage(RoomType roomType) {
+        if (roomType.getImages() == null || roomType.getImages().isEmpty()) {
+            log.info("RoomType {} không có ảnh", roomType.getName());
+            return null;
+        }
+
+        String image = roomType.getImages().get(0);
+
+        log.info(
+                "RoomType id: {}, name: {}, first image: {}",
+                roomType.getId(),
+                roomType.getName(),
+                image);
+
+        return image;
+    }
+
+    private String firstHotelImage(Hotel hotel) {
+        if (hotel.getImages() == null || hotel.getImages().isEmpty()) {
+            return null;
+        }
+        return hotel.getImages().get(0);
     }
 
     private boolean isRoomOverlapConstraintViolation(Throwable ex) {

@@ -3,6 +3,8 @@ package com.hotel.booking.service;
 import com.hotel.booking.dto.BookingResponse;
 import com.hotel.booking.exception.ResourceNotFoundException;
 import com.hotel.booking.model.Booking;
+import com.hotel.booking.model.Hotel;
+import com.hotel.booking.model.RoomType;
 import com.hotel.booking.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,13 +82,21 @@ public class AdminBookingService {
 
     private BookingResponse toResponse(Booking booking) {
         long nights = calculateBillableNights(booking);
+        RoomType roomType = booking.getRoom().getRoomType();
         return BookingResponse.builder()
                 .bookingId(booking.getId())
                 .status(booking.getStatus())
                 .roomNumber(booking.getRoom().getRoomNumber())
-                .roomTypeName(booking.getRoom().getRoomType().getName())
-                .hotelName(booking.getRoom().getRoomType().getHotel().getName())
-                .hotelCity(booking.getRoom().getRoomType().getHotel().getCity())
+                .roomTypeName(roomType.getName())
+                .roomImage(firstImage(roomType))
+                .roomDescription(roomType.getDescription())
+                .roomBasePrice(roomType.getBasePrice())
+                .areaSqm(roomType.getAreaSqm())
+                .capacityAdults(roomType.getCapacityAdults())
+                .capacityChildren(roomType.getCapacityChildren())
+                .hotelName(roomType.getHotel().getName())
+                .hotelCity(roomType.getHotel().getCity())
+                .hotelImage(firstHotelImage(roomType.getHotel()))
                 .checkInDate(booking.getCheckInDate())
                 .checkOutDate(booking.getCheckOutDate())
                 .numNights((int) nights)
@@ -96,6 +106,20 @@ public class AdminBookingService {
                 .specialRequests(booking.getSpecialRequests())
                 .createdAt(booking.getCreatedAt())
                 .build();
+    }
+
+    private String firstImage(RoomType roomType) {
+        if (roomType.getImages() == null || roomType.getImages().isEmpty()) {
+            return null;
+        }
+        return roomType.getImages().get(0);
+    }
+
+    private String firstHotelImage(Hotel hotel) {
+        if (hotel.getImages() == null || hotel.getImages().isEmpty()) {
+            return null;
+        }
+        return hotel.getImages().get(0);
     }
 
     private long calculateBillableNights(Booking booking) {
